@@ -322,14 +322,14 @@ async function downloadFile(tableData, additionalData = {}) {
     totalRow.font = { bold: true };
 
     // ==============================================
-    // ОБВОДКА ВСЕГО БЛОКА (A19:I до последней строки)
+    // ОБВОДКА ВСЕГО БЛОКА (A19:I до строки "Всего")
     // ==============================================
 
-    // 1. Определяем последнюю строку с данными
-    const lastRow = worksheet.lastRow.number;
+    // 1. Определяем строку "Всего" - это текущая последняя строка с данными
+    const totalRowNumber = worksheet.lastRow.number;
 
-    // 2. Устанавливаем границы для всего диапазона A19:I{lastRow}
-    for (let rowNum = 19; rowNum <= lastRow; rowNum++) {
+    // 2. Устанавливаем черные границы для всего диапазона A19:I{totalRowNumber}
+    for (let rowNum = 19; rowNum <= totalRowNumber; rowNum++) {
       const row = worksheet.getRow(rowNum);
       
       // Пропускаем полностью пустые строки (если есть)
@@ -338,22 +338,22 @@ async function downloadFile(tableData, additionalData = {}) {
       for (let col = 1; col <= 9; col++) { // Колонки A-I (1-9)
         const cell = row.getCell(col);
         
-        // Устанавливаем границы для каждой ячейки
+        // Устанавливаем черные границы для каждой ячейки
         cell.border = {
-          top: { style: 'thin' },
-          left: { style: 'thin' },
-          bottom: { style: 'thin' },
-          right: { style: 'thin' }
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
         };
         
         // Для заголовков добавляем жирные нижние границы
         if (rowNum === 19 || rowNum === 20) {
-          cell.border.bottom = { style: 'medium' };
+          cell.border.bottom = { style: 'medium', color: { argb: 'FF000000' } };
         }
         
         // Для итоговой строки - жирная верхняя граница
-        if (rowNum === lastRow) {
-          cell.border.top = { style: 'medium' };
+        if (rowNum === totalRowNumber) {
+          cell.border.top = { style: 'medium', color: { argb: 'FF000000' } };
         }
       }
     }
@@ -425,7 +425,8 @@ for (let rowNum = summaryStartRow; rowNum <= signatureStartRow - 1; rowNum++) {
 }
 
 // Форматирование подписей
-for (let rowNum = signatureStartRow; rowNum <= lastRow; rowNum++) {
+const signatureEndRow = worksheet.lastRow.number;
+for (let rowNum = signatureStartRow; rowNum <= signatureEndRow; rowNum++) {
   const row = worksheet.getRow(rowNum);
   
   // Выравнивание по центру для подписей
@@ -440,7 +441,7 @@ for (let rowNum = signatureStartRow; rowNum <= lastRow; rowNum++) {
   }
   
   // Границы для блока подписей
-  if (rowNum >= signatureStartRow && rowNum <= lastRow) {
+  if (rowNum >= signatureStartRow && rowNum <= signatureEndRow) {
     for (let col = 1; col <= 9; col++) {
       const cell = row.getCell(col);
       
@@ -450,7 +451,7 @@ for (let rowNum = signatureStartRow; rowNum <= lastRow; rowNum++) {
       }
       
       // Границы для М.П.
-      if (rowNum === lastRow) {
+      if (rowNum === signatureEndRow) {
         cell.border = { top: { style: 'thin' } };
       }
     }
