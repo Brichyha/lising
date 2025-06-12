@@ -129,7 +129,8 @@ function getLastPayment({
         value: redemptionValue,
     });
     return {
-        month: generatePaymentDate(firstPaymentDate, schedule.length),
+        month: schedule.length, // Номер месяца для условий
+        paymentDate: generatePaymentDate(firstPaymentDate, schedule.length), // Дата для отображения
         monthlyPayment: monthlyPayment,
         interestPayment: { withNds: 0, value: 0, nds: 0 },
         principalPayment: principalPayment,
@@ -301,7 +302,8 @@ class Annuity {
             redemptionValue: this.redemptionValue,
             clientNDSCalc: this.clientNDSCalc,
         });
-        firstPayment.month = generatePaymentDate(this.firstPaymentDate, 0);
+        firstPayment.month = 0; // Номер месяца для условий
+        firstPayment.paymentDate = generatePaymentDate(this.firstPaymentDate, 0); // Дата для отображения
         schedule.push(firstPayment); // первый платеж
 
         for (let i = 1; i <= this.term; i++) {
@@ -501,7 +503,8 @@ class Annuity {
                     ),
                 };
                 schedule.push({
-                    month: generatePaymentDate(this.firstPaymentDate, i),
+                    month: i, // Номер месяца для условий
+                    paymentDate: generatePaymentDate(this.firstPaymentDate, i), // Дата для отображения
                     monthlyPayment: monthlyPaymentWithNds,
                     interestPayment: interestPaymentWithNds,
                     principalPayment: principalPaymentWithNds,
@@ -550,7 +553,8 @@ class Annuity {
 
                 schedule.push({
                     type: "lastMonthly",
-                    month: generatePaymentDate(this.firstPaymentDate, i),
+                    month: i, // Номер месяца для условий
+                    paymentDate: generatePaymentDate(this.firstPaymentDate, i), // Дата для отображения
                     monthlyPayment: monthlyPaymentWithNds,
                     interestPayment: interestPaymentWithNds,
                     principalPayment: principalPaymentWithNds,
@@ -637,7 +641,8 @@ class Differentiated {
             redemptionValue: this.redemptionValue,
             clientNDSCalc: this.clientNDSCalc,
         });
-        firstPayment.month = generatePaymentDate(this.firstPaymentDate, 0);
+        firstPayment.month = 0; // Номер месяца для условий
+        firstPayment.paymentDate = generatePaymentDate(this.firstPaymentDate, 0); // Дата для отображения
         schedule.push(firstPayment); // первый платеж
         for (let month = 1; month <= this.term; month++) {
             this.condition.forEach((item) => {
@@ -715,7 +720,8 @@ class Differentiated {
                 this.balance = this.balance - this.principalPayment;
 
                 schedule.push({
-                    month: generatePaymentDate(this.firstPaymentDate, month),
+                    month: month, // Номер месяца для условий
+                    paymentDate: generatePaymentDate(this.firstPaymentDate, month), // Дата для отображения
                     monthlyPayment: monthlyPaymentWithNds,
                     interestPayment: interestPaymentWithNds,
                     principalPayment: principalPaymentWithNds,
@@ -774,7 +780,8 @@ class Differentiated {
 
                 schedule.push({
                     type: "lastMonthly",
-                    month: generatePaymentDate(this.firstPaymentDate, month),
+                    month: month, // Номер месяца для условий
+                    paymentDate: generatePaymentDate(this.firstPaymentDate, month), // Дата для отображения
                     monthlyPayment: monthlyPaymentWithNds,
                     interestPayment: interestPaymentWithNds,
                     principalPayment: principalPaymentWithNds,

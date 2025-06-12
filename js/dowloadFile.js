@@ -196,13 +196,14 @@ async function downloadFile(tableData, additionalData = {}) {
     const paymentRows = tableData.filter(item => 
       item.month !== "итого" && 
       typeof item.month !== 'undefined' &&
-      item.monthlyPayment
+      item.monthlyPayment &&
+      typeof item.month === 'number' // Оставляем только записи с числовыми номерами месяцев
     );
     
     console.log("Отфильтрованные данные:", paymentRows);
     
     const rows = paymentRows.map((item) => [
-      item.month || "", // Дата платежа
+      item.paymentDate || item.month || "", // Дата платежа (приоритет у paymentDate)
       item.monthlyPayment?.withNds || 0, // Лизинговый платеж с НДС
       item.principalPayment?.value || 0, // Возмещение расходов без НДС
       item.principalPayment?.nds || 0, // НДС на инвестиционные расходы
@@ -221,8 +222,8 @@ async function downloadFile(tableData, additionalData = {}) {
 
     // Выкупная стоимость и итоги
     // Найдем последний платеж (выкупную стоимость) из данных
-    const lastPayment = tableData.find(item => item.month && typeof item.month === 'string' && item.balance === 0);
-    const buyoutDate = lastPayment ? lastPayment.month : "";
+    const lastPayment = tableData.find(item => item.balance === 0 && (item.paymentDate || item.month));
+    const buyoutDate = lastPayment ? (lastPayment.paymentDate || lastPayment.month) : "";
     
     worksheet.addRow(["Выкупная стоимость:"]);
     const buyoutRow = worksheet.addRow([

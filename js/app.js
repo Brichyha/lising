@@ -64,7 +64,7 @@ buttonCalcResult.addEventListener("click", (e) => {
   schedule.forEach((scheduleItem) => {
     table.appendChild(
       createRow({
-        month: scheduleItem.month,
+        month: scheduleItem.paymentDate || scheduleItem.month, // Показываем дату, если есть, иначе номер
         monthlyPaymentWithNds: scheduleItem.monthlyPayment.withNds,
         principalPaymentValue: scheduleItem.principalPayment.value,
         principalPaymentNds: scheduleItem.principalPayment.nds,
