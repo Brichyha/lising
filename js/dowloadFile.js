@@ -54,9 +54,8 @@ async function downloadFile(tableData, additionalData = {}) {
     worksheet.getCell('A7').value = 'Возмещение стоимости в размере';
 
     worksheet.mergeCells('D7:I7');
-    // Возмещение = (сумма - первоначальный платеж - выкупная стоимость) / сумма * 100
-    const compensationPercent = sum ? (((sum - firstPayment - (sum * redemptionPercent / 100)) / sum) * 100).toFixed(1) : '99';
-    worksheet.getCell('D7').value = `${compensationPercent} %`;
+    // Возмещение стоимости всегда 99%
+    worksheet.getCell('D7').value = '99 %';
 
     worksheet.mergeCells('A8:C8');
     worksheet.getCell('A8').value = 'Авансовый платеж';
@@ -170,7 +169,7 @@ async function downloadFile(tableData, additionalData = {}) {
     worksheet.getCell('C19').value = 'Лизинговые платежи, в том числе:';
 
     const paymentHeaders = [
-      "Дата платежа",
+      "Дата платежа (авансовый платёж)",
       "Лизинговые платежи с НДС (гр.3+гр.4+гр.5+гр.6)",
       "Возмещение инвестиционных расходов по приобретению Предметов лизинга без НДС",
       "НДС на инвестиционные расходы по приобретению Предметов лизинга по ставке 20%",
@@ -333,20 +332,30 @@ const summaryStartRow = worksheet.lastRow.number + 1;
 const buyoutAmount = lastPayment?.monthlyPayment?.withNds || 0;
 const buyoutDateText = buyoutDate ? `по сроку на ${buyoutDate}` : "";
 
-worksheet.addRow([`Выкупной платеж с НДС ${buyoutDateText} составляет`, "", "", "", "", "", "", buyoutAmount, "USD"]);
+// Добавляем строку с автопереносом
+const buyoutSummaryRow = worksheet.addRow([`Выкупной платеж с НДС ${buyoutDateText} составляет`, "", "", "", "", "", "", buyoutAmount, "USD"]);
+buyoutSummaryRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
+
 worksheet.addRow([]);
-worksheet.addRow(["3. Стоимость договора лизинга с НДС составляет:", "", "", "", "", "", "", totals.monthlyPaymentWithNds, "USD"]);
+
+// Добавляем строку с автопереносом
+const contractSummaryRow = worksheet.addRow(["3. Стоимость договора лизинга с НДС составляет:", "", "", "", "", "", "", totals.monthlyPaymentWithNds, "USD"]);
+contractSummaryRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
+
 worksheet.addRow(["в том числе:"]);
 
 // Сумма платежей = общая сумма минус выкупная стоимость
 const paymentsSum = totals.monthlyPaymentWithNds - buyoutAmount;
-worksheet.addRow(["4. Сумма платежей составляет:", "", "", "", "", "", "", paymentsSum, "USD"]);
+const paymentsSummaryRow = worksheet.addRow(["4. Сумма платежей составляет:", "", "", "", "", "", "", paymentsSum, "USD"]);
+paymentsSummaryRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
 
 // НДС на платежи = общий НДС минус НДС выкупной стоимости
 const paymentsNds = totals.monthlyPaymentNds - (lastPayment?.monthlyPayment?.nds || 0);
 worksheet.addRow(["Сумма НДС на платежи составляет:", "", "", "", "", "", "", paymentsNds, "USD"]);
 
-worksheet.addRow(["5. Выкупная стоимость предмета лизинга составляет:", "", "", "", "", "", "", buyoutAmount, "USD"]);
+const buyoutValueSummaryRow = worksheet.addRow(["5. Выкупная стоимость предмета лизинга составляет:", "", "", "", "", "", "", buyoutAmount, "USD"]);
+buyoutValueSummaryRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
+
 worksheet.addRow(["Сумма НДС на выкупную стоимость предмета лизинга составляет:", "", "", "", "", "", "", lastPayment?.monthlyPayment?.nds || 0, "USD"]);
 worksheet.addRow([]);
 
