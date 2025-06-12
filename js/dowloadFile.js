@@ -169,7 +169,7 @@ async function downloadFile(tableData, additionalData = {}) {
     worksheet.getCell('C19').value = 'Лизинговые платежи, в том числе:';
 
     const paymentHeaders = [
-      "Дата платежа (авансовый платёж)",
+      "Дата платежа",
       "Лизинговые платежи с НДС (гр.3+гр.4+гр.5+гр.6)",
       "Возмещение инвестиционных расходов по приобретению Предметов лизинга без НДС",
       "НДС на инвестиционные расходы по приобретению Предметов лизинга по ставке 20%",
@@ -201,17 +201,25 @@ async function downloadFile(tableData, additionalData = {}) {
     
     console.log("Отфильтрованные данные:", paymentRows);
     
-    const rows = paymentRows.map((item) => [
-      item.paymentDate || item.month || "", // Дата платежа (приоритет у paymentDate)
-      item.monthlyPayment?.withNds || 0, // Лизинговый платеж с НДС
-      item.principalPayment?.value || 0, // Возмещение расходов без НДС
-      item.principalPayment?.nds || 0, // НДС на инвестиционные расходы
-      item.interestPayment?.value || 0, // Вознаграждение без НДС
-      item.interestPayment?.nds || 0, // НДС на вознаграждение
-      item.monthlyPayment?.value || 0, // Платеж без НДС
-      item.monthlyPayment?.nds || 0, // Всего НДС
-      item.balance || 0 // Остаток стоимости
-    ]);
+    const rows = paymentRows.map((item) => {
+      // Формируем дату с пометкой для авансового платежа
+      let paymentDateText = item.paymentDate || item.month || "";
+      if (item.month === 0) {
+        paymentDateText = paymentDateText ? `${paymentDateText} (авансовый платёж)` : "авансовый платёж";
+      }
+      
+      return [
+        paymentDateText, // Дата платежа с пометкой для авансового
+        item.monthlyPayment?.withNds || 0, // Лизинговый платеж с НДС
+        item.principalPayment?.value || 0, // Возмещение расходов без НДС
+        item.principalPayment?.nds || 0, // НДС на инвестиционные расходы
+        item.interestPayment?.value || 0, // Вознаграждение без НДС
+        item.interestPayment?.nds || 0, // НДС на вознаграждение
+        item.monthlyPayment?.value || 0, // Платеж без НДС
+        item.monthlyPayment?.nds || 0, // Всего НДС
+        item.balance || 0 // Остаток стоимости
+      ];
+    });
     rows.forEach((row) => {
       const addedRow = worksheet.addRow(row);
       addedRow.eachCell((cell, colNumber) => {
