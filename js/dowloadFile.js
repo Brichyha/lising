@@ -158,7 +158,19 @@ async function downloadFile(tableData) {
     worksheet.getRow(20).alignment = { wrapText: true }; 
 
     // Добавление строк платежей
-    const rows = tableData.map((item) => [
+    // Отладочная информация
+    console.log("tableData для Excel:", tableData);
+    
+    // Фильтруем данные, исключая итоговые строки
+    const paymentRows = tableData.filter(item => 
+      item.month !== "итого" && 
+      typeof item.month !== 'undefined' &&
+      item.monthlyPayment
+    );
+    
+    console.log("Отфильтрованные данные:", paymentRows);
+    
+    const rows = paymentRows.map((item) => [
       item.month || "", // Дата платежа
       item.monthlyPayment?.withNds || 0, // Лизинговый платеж с НДС
       item.principalPayment?.value || 0, // Возмещение расходов без НДС
@@ -177,30 +189,65 @@ async function downloadFile(tableData) {
     });
 
     // Выкупная стоимость и итоги
+    // Найдем последний платеж (выкупную стоимость) из данных
+    const lastPayment = tableData.find(item => item.month && typeof item.month === 'string' && item.balance === 0);
+    const buyoutDate = lastPayment ? lastPayment.month : "";
+    
     worksheet.addRow(["Выкупная стоимость:"]);
     const buyoutRow = worksheet.addRow([
-      "6/6/30", // Дата выкупа
-      10750.00, // Платеж с НДС
-      8958.33, // Возмещение без НДС
-      1791.67, // НДС на инвестиционные расходы
-      0.00, // Вознаграждение без НДС
-      0.00, // НДС на вознаграждение
-      8958.33, // Платеж без НДС
-      1791.67, // Всего НДС
+      buyoutDate, // Дата выкупа (динамическая)
+      lastPayment?.monthlyPayment?.withNds || 10750.00, // Платеж с НДС
+      lastPayment?.principalPayment?.value || 8958.33, // Возмещение без НДС
+      lastPayment?.principalPayment?.nds || 1791.67, // НДС на инвестиционные расходы
+      lastPayment?.interestPayment?.value || 0.00, // Вознаграждение без НДС
+      lastPayment?.interestPayment?.nds || 0.00, // НДС на вознаграждение
+      lastPayment?.monthlyPayment?.value || 8958.33, // Платеж без НДС
+      lastPayment?.monthlyPayment?.nds || 1791.67, // Всего НДС
       0.00 // Остаток
     ]);
     buyoutRow.eachCell((cell, colNumber) => {
       if (colNumber > 1) cell.numFmt = '#,##0.00';
     });
+    // Рассчитываем итоги динамически
+    const totals = paymentRows.reduce((acc, item) => {
+      acc.monthlyPaymentWithNds += item.monthlyPayment?.withNds || 0;
+      acc.principalPaymentValue += item.principalPayment?.value || 0;
+      acc.principalPaymentNds += item.principalPayment?.nds || 0;
+      acc.interestPaymentValue += item.interestPayment?.value || 0;
+      acc.interestPaymentNds += item.interestPayment?.nds || 0;
+      acc.monthlyPaymentValue += item.monthlyPayment?.value || 0;
+      acc.monthlyPaymentNds += item.monthlyPayment?.nds || 0;
+      return acc;
+    }, {
+      monthlyPaymentWithNds: 0,
+      principalPaymentValue: 0,
+      principalPaymentNds: 0,
+      interestPaymentValue: 0,
+      interestPaymentNds: 0,
+      monthlyPaymentValue: 0,
+      monthlyPaymentNds: 0
+    });
+
+    // Добавляем выкупную стоимость к итогам
+    if (lastPayment) {
+      totals.monthlyPaymentWithNds += lastPayment.monthlyPayment?.withNds || 0;
+      totals.principalPaymentValue += lastPayment.principalPayment?.value || 0;
+      totals.principalPaymentNds += lastPayment.principalPayment?.nds || 0;
+      totals.interestPaymentValue += lastPayment.interestPayment?.value || 0;
+      totals.interestPaymentNds += lastPayment.interestPayment?.nds || 0;
+      totals.monthlyPaymentValue += lastPayment.monthlyPayment?.value || 0;
+      totals.monthlyPaymentNds += lastPayment.monthlyPayment?.nds || 0;
+    }
+
     const totalRow = worksheet.addRow([
       "Всего:",
-      1818294.52, // Итог с НДС
-      895833.33, // Итог возмещения без НДС
-      179166.67, // Итог НДС на инвестиционные расходы
-      619412.09, // Итог вознаграждения без НДС
-      123882.43, // Итог НДС на вознаграждение
-      1515245.42, // Итог платежа без НДС
-      303049.10, // Итог НДС
+      totals.monthlyPaymentWithNds, // Итог с НДС
+      totals.principalPaymentValue, // Итог возмещения без НДС
+      totals.principalPaymentNds, // Итог НДС на инвестиционные расходы
+      totals.interestPaymentValue, // Итог вознаграждения без НДС
+      totals.interestPaymentNds, // Итог НДС на вознаграждение
+      totals.monthlyPaymentValue, // Итог платежа без НДС
+      totals.monthlyPaymentNds, // Итог НДС
       0 // Остаток
     ]);
     totalRow.eachCell((cell, colNumber) => {
@@ -250,15 +297,25 @@ async function downloadFile(tableData) {
     // 5. Итоговые суммы
 const summaryStartRow = worksheet.lastRow.number + 1;
 
-// Добавляем строки с итогами
-worksheet.addRow(["Выкупной платеж с НДС по сроку на 06 июня 2030 составляет", "", "", "", "", "", "", 10750.00, "USD"]);
+// Добавляем строки с итогами (динамически рассчитанные)
+const buyoutAmount = lastPayment?.monthlyPayment?.withNds || 0;
+const buyoutDateText = buyoutDate ? `по сроку на ${buyoutDate}` : "";
+
+worksheet.addRow([`Выкупной платеж с НДС ${buyoutDateText} составляет`, "", "", "", "", "", "", buyoutAmount, "USD"]);
 worksheet.addRow([]);
-worksheet.addRow(["3. Стоимость договора лизинга с НДС составляет:", "", "", "", "", "", "", 1818294.52, "USD"]);
+worksheet.addRow(["3. Стоимость договора лизинга с НДС составляет:", "", "", "", "", "", "", totals.monthlyPaymentWithNds, "USD"]);
 worksheet.addRow(["в том числе:"]);
-worksheet.addRow(["4. Сумма платежей составляет:", "", "", "", "", "", "", 1807544.52, "USD"]);
-worksheet.addRow(["Сумма НДС на платежи составляет:", "", "", "", "", "", "", 301257.43, "USD"]);
-worksheet.addRow(["5. Выкупная стоимость предмета лизинга составляет:", "", "", "", "", "", "", 10750.00,"USD"]);
-worksheet.addRow(["Сумма НДС на выкупную стоимость предмета лизинга составляет:", "", "", "", "", "", "", 1791.67, "USD"]);
+
+// Сумма платежей = общая сумма минус выкупная стоимость
+const paymentsSum = totals.monthlyPaymentWithNds - buyoutAmount;
+worksheet.addRow(["4. Сумма платежей составляет:", "", "", "", "", "", "", paymentsSum, "USD"]);
+
+// НДС на платежи = общий НДС минус НДС выкупной стоимости
+const paymentsNds = totals.monthlyPaymentNds - (lastPayment?.monthlyPayment?.nds || 0);
+worksheet.addRow(["Сумма НДС на платежи составляет:", "", "", "", "", "", "", paymentsNds, "USD"]);
+
+worksheet.addRow(["5. Выкупная стоимость предмета лизинга составляет:", "", "", "", "", "", "", buyoutAmount, "USD"]);
+worksheet.addRow(["Сумма НДС на выкупную стоимость предмета лизинга составляет:", "", "", "", "", "", "", lastPayment?.monthlyPayment?.nds || 0, "USD"]);
 worksheet.addRow([]);
 
 // 6. Подписи
