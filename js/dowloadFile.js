@@ -1,5 +1,27 @@
-async function downloadFile(tableData) {
+async function downloadFile(tableData, additionalData = {}) {
   try {
+    const { firstPaymentDate, term, sum, firstPayment, redemptionPercent } = additionalData;
+    
+    // Функция для расчета даты окончания лизинга
+    function calculateLeasingPeriod(startDate, termMonths) {
+      if (!startDate || !termMonths) {
+        return `${termMonths || 60} мес.`;
+      }
+      
+      const start = new Date(startDate);
+      const end = new Date(startDate);
+      end.setMonth(end.getMonth() + termMonths);
+      
+      const formatDate = (date) => {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}.${month}.${year}`;
+      };
+      
+      return `${termMonths} мес. (с ${formatDate(start)} по ${formatDate(end)})`;
+    }
+    
     // Создаем новую книгу и лист
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("TDSheet");
@@ -32,25 +54,29 @@ async function downloadFile(tableData) {
     worksheet.getCell('A7').value = 'Возмещение стоимости в размере';
 
     worksheet.mergeCells('D7:I7');
-    worksheet.getCell('D7').value = '99 %';
+    // Возмещение = (сумма - первоначальный платеж - выкупная стоимость) / сумма * 100
+    const compensationPercent = sum ? (((sum - firstPayment - (sum * redemptionPercent / 100)) / sum) * 100).toFixed(1) : '99';
+    worksheet.getCell('D7').value = `${compensationPercent} %`;
 
     worksheet.mergeCells('A8:C8');
     worksheet.getCell('A8').value = 'Авансовый платеж';
 
     worksheet.mergeCells('D8:I8');
-    worksheet.getCell('D8').value = '1%';
+    // Авансовый платеж = первоначальный платеж / сумма * 100
+    const advancePercent = (sum && firstPayment) ? ((firstPayment / sum) * 100).toFixed(1) : '1';
+    worksheet.getCell('D8').value = `${advancePercent}%`;
 
     worksheet.mergeCells('A9:C9');
     worksheet.getCell('A9').value = 'Процент выкупной стоимости';
 
     worksheet.mergeCells('D9:I9');
-    worksheet.getCell('D9').value = '1%';
+    worksheet.getCell('D9').value = `${redemptionPercent || 1}%`;
 
     worksheet.mergeCells('A10:C10');
     worksheet.getCell('A10').value = 'Срок лизинга';
 
     worksheet.mergeCells('D10:I10');
-    worksheet.getCell('D10').value = '60 мес.';
+    worksheet.getCell('D10').value = calculateLeasingPeriod(firstPaymentDate, term);
 
     //Добавляем границы к ячейкам A6 по I10
     for (let rowNum = 6; rowNum <= 10; rowNum++) {
@@ -84,24 +110,29 @@ async function downloadFile(tableData) {
     const costHeaderRow = worksheet.addRow(costHeaders);
     costHeaderRow.font = { bold: true };
     worksheet.addRow(["1", "2", "3", "4", "5", "6", "7"]);
-    // Заготовка для данных (замените значения на реальные)
+    // Рассчитываем данные динамически
+    const contractCostWithoutNds = sum ? (sum / 1.2) : 895833.33; // Исходя из НДС 20%
+    const ndsAmount = sum ? (sum - contractCostWithoutNds) : 179166.67;
+    const contractCostWithNds = sum || 1075000.00;
+    const ndsRate = "20%"; // НДС ставка
+    
     worksheet.addRow([
       "", // Марка
-      895833.33, // Цена единицы
+      contractCostWithoutNds, // Цена единицы
       1, // Количество
-      895833.33, // Контрактная стоимость
-      "20%", // Ставка НДС
-      179166.67, // Сумма НДС
-      1075000.00 // Стоимость с НДС
+      contractCostWithoutNds, // Контрактная стоимость
+      ndsRate, // Ставка НДС
+      ndsAmount, // Сумма НДС
+      contractCostWithNds // Стоимость с НДС
     ]);
     worksheet.addRow([
       "Итого",
       "",
       1, // Количество
-      895833.33, // Контрактная стоимость
+      contractCostWithoutNds, // Контрактная стоимость
       "",
-      179166.67, // Сумма НДС
-      1075000.00 // Стоимость с НДС
+      ndsAmount, // Сумма НДС
+      contractCostWithNds // Стоимость с НДС
     ]);
     worksheet.addRow([]);
 

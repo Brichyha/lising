@@ -10,7 +10,23 @@ buttonDownload.addEventListener("click", (e) => {
     alert("сформируйте таблицу");
     return;
   }
-  downloadFile(schedule);
+  
+  // Получаем дополнительные данные для Excel
+  const firstPaymentDateInput = document.querySelector("#firstPaymentDate-input").value;
+  const termInput = +document.querySelector("#term-input").value;
+  const sumInput = +document.querySelector("#sum-input").value;
+  const firstPayInput = +document.querySelector("#firstPay-input").value;
+  const redemptionPercentInput = +document.querySelector("#redemptionPercent-input").value;
+  
+  const additionalData = {
+    firstPaymentDate: firstPaymentDateInput,
+    term: termInput,
+    sum: sumInput,
+    firstPayment: firstPayInput,
+    redemptionPercent: redemptionPercentInput
+  };
+  
+  downloadFile(schedule, additionalData);
 });
 
 // подсчет
