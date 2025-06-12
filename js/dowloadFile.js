@@ -202,14 +202,28 @@ async function downloadFile(tableData, additionalData = {}) {
     console.log("Отфильтрованные данные:", paymentRows);
     
     const rows = paymentRows.map((item) => {
-      // Формируем дату с пометкой для авансового платежа
-      let paymentDateText = item.paymentDate || item.month || "";
+      // Формируем дату: для авансового платежа - текст, для остальных - реальные даты
+      let paymentDateText;
       if (item.month === 0) {
-        paymentDateText = paymentDateText ? `${paymentDateText} (авансовый платёж)` : "авансовый платёж";
+        paymentDateText = "Авансовый платеж";
+      } else {
+        // Для остальных платежей используем дату первого платежа + (номер месяца - 1)
+        if (firstPaymentDate) {
+          const date = new Date(firstPaymentDate);
+          date.setMonth(date.getMonth() + (item.month - 1));
+          
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = date.getFullYear();
+          
+          paymentDateText = `${day}.${month}.${year}`;
+        } else {
+          paymentDateText = item.month; // Fallback к номеру месяца
+        }
       }
       
       return [
-        paymentDateText, // Дата платежа с пометкой для авансового
+        paymentDateText, // Дата платежа
         item.monthlyPayment?.withNds || 0, // Лизинговый платеж с НДС
         item.principalPayment?.value || 0, // Возмещение расходов без НДС
         item.principalPayment?.nds || 0, // НДС на инвестиционные расходы
@@ -230,11 +244,24 @@ async function downloadFile(tableData, additionalData = {}) {
     // Выкупная стоимость и итоги
     // Найдем последний платеж (выкупную стоимость) из данных
     const lastPayment = tableData.find(item => item.balance === 0 && (item.paymentDate || item.month));
-    const buyoutDate = lastPayment ? (lastPayment.paymentDate || lastPayment.month) : "";
+    let buyoutDate = "";
+    if (lastPayment && firstPaymentDate) {
+      // Рассчитываем дату выкупа на основе номера месяца и даты первого платежа
+      const date = new Date(firstPaymentDate);
+      date.setMonth(date.getMonth() + (lastPayment.month - 1));
+      
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      
+      buyoutDate = `${day}.${month}.${year}`;
+    } else if (lastPayment) {
+      buyoutDate = lastPayment.paymentDate || lastPayment.month;
+    }
     
     worksheet.addRow(["Выкупная стоимость:"]);
     const buyoutRow = worksheet.addRow([
-      buyoutDate, // Дата выкупа (динамическая)
+      buyoutDate || "Выкупная дата", // Дата выкупа (динамическая)
       lastPayment?.monthlyPayment?.withNds || 10750.00, // Платеж с НДС
       lastPayment?.principalPayment?.value || 8958.33, // Возмещение без НДС
       lastPayment?.principalPayment?.nds || 1791.67, // НДС на инвестиционные расходы
