@@ -70,6 +70,7 @@ function getDataInput(dataLeasing) {
   const firstPayInput = +document.querySelector("#firstPay-input").value;
   const percentInput = +document.querySelector("#percent-input").value;
   const termInput = +document.querySelector("#term-input").value;
+  const firstPaymentDateInput = document.querySelector("#firstPaymentDate-input").value;
   const redemptionPercentInput = document.querySelector(
     "#redemptionPercent-input"
   ).value;
@@ -98,6 +99,7 @@ function getDataInput(dataLeasing) {
     firstPayment: firstPayInput ? firstPayInput : dataLeasing.firstPayment,
     percent: percentInput ? percentInput : dataLeasing.percent,
     term: termInput ? termInput : dataLeasing.term,
+    firstPaymentDate: firstPaymentDateInput || null,
     redemptionPercent: redemptionPercentInput
       ? +redemptionPercentInput
       : dataLeasing.redemptionPercent,
