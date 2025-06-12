@@ -1,0 +1,167 @@
+/* Указываем box sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Убираем внутренние отступы */
+ul[class],
+ol[class] {
+  padding: 0;
+}
+
+/* Убираем внешние отступы */
+body,
+h1,
+h2,
+h3,
+h4,
+p,
+ul[class],
+ol[class],
+li,
+figure,
+figcaption,
+blockquote,
+dl,
+dd {
+  margin: 0;
+}
+
+/* Выставляем основные настройки по-умолчанию для body */
+body {
+  min-height: 100vh;
+  scroll-behavior: smooth;
+  text-rendering: optimizeSpeed;
+  line-height: 1.5;
+}
+
+/* Удаляем стандартную стилизацию для всех ul и il, у которых есть атрибут class*/
+ul[class],
+ol[class] {
+  list-style: none;
+}
+
+/* Элементы a, у которых нет класса, сбрасываем до дефолтных стилей */
+a:not([class]) {
+  text-decoration-skip-ink: auto;
+}
+
+a {
+  text-decoration: none;
+  color: none;
+}
+
+/* Упрощаем работу с изображениями */
+img {
+  max-width: 100%;
+  display: block;
+  max-height: 100%;
+}
+
+/* Указываем понятную периодичность в потоке данных у article*/
+article > * + * {
+  margin-top: 1em;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  /* display: none; <- Crashes Chrome on hover */
+  -webkit-appearance: none;
+  margin: 0;
+  /* <-- Apparently some margin are still there even though it's hidden */
+}
+
+/* Наследуем шрифты для инпутов и кнопок */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+/* Удаляем все анимации и переходы для людей, которые предпочитай их не использовать */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  font-size: 16px;
+  font-weight: 600;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #ffff;
+}
+
+/* 
+@media (min-width:2000px) {
+  body{
+    font-size: 18px;
+
+  }
+} */
+
+.wrapper {
+  min-height: 100vh;
+  /* min-width: 100vw; */
+  position: relative;
+
+  /* display: flex; */
+}
+
+.container {
+  /* min-height: 2160px; */
+  max-width: 1400px;
+  padding: 0 30px;
+  margin: 0 auto;
+}
+section {
+  padding: 32px 0;
+}
+.section-title {
+  margin-bottom: 34px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  /* ширина для вертикального скролла */
+  height: 2px;
+  /* высота для горизонтального скролла */
+  background-color: #c0c9d3;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #464040;
+  border-radius: 9em;
+  /* box-shadow: inset 1px 1px 10px #f3faf7; */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #253861;
+}
+
+#horizontal-scroller,
+#horizontal-scroller2,
+#horizontal-scroller3,
+#horizontal-scroller4,
+#horizontal-scroller5 {
+  cursor: grab;
+}
+
+
+@media ((max-width: 1000px)) {
+  section {
+    padding: 16px 0;
+  }
+}
+
+@media ((max-width: 570px)) {
+  section {
+    padding: 8px 0;
+  }
+}

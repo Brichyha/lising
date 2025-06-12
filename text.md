@@ -1,0 +1,1 @@
+actions - 'percent', 'term', 'payment'
