@@ -206,35 +206,45 @@ async function downloadFile(tableData, additionalData = {}) {
     // Отладочная информация
     console.log("tableData для Excel:", tableData);
     
-    // Фильтруем данные, исключая итоговые строки
-    const paymentRows = tableData.filter(item => 
+    // 1) Строки для отображения (включаем ВСЕ платежи, в том числе выкупной)
+    const paymentRowsDisplay = tableData.filter(item => 
       item.month !== "итого" && 
       typeof item.month !== 'undefined' &&
       item.monthlyPayment &&
-      typeof item.month === 'number' // Оставляем только записи с числовыми номерами месяцев
+      typeof item.month === 'number'
     );
+
+    // 2) Строки, участвующие в расчёте итогов
+    //    Если предусмотрена выкупная стоимость (>0), то строка с balance === 0 является выкупом и её исключаем.
+    //    Если выкуп 0%, то последняя строка с balance === 0 — это обычный платёж, его учитывать нужно.
+    const excludeBuyout = redemptionPercent && redemptionPercent > 0;
+    const paymentRowsTotals = paymentRowsDisplay.filter(item => excludeBuyout ? item.balance !== 0 : true);
     
-    console.log("Отфильтрованные данные:", paymentRows);
+    console.log("Отфильтрованные данные:", paymentRowsDisplay);
     
-    const rows = paymentRows.map((item) => {
+    const rows = paymentRowsDisplay.map((item) => {
       // Формируем дату: для авансового платежа - текст, для остальных - реальные даты
       let paymentDateText;
-      if (item.month === 0) {
-        paymentDateText = "Авансовый платеж";
-      } else {
-        // Для остальных платежей используем дату первого платежа + (номер месяца - 1)
-        if (firstPaymentDate) {
-          const date = new Date(firstPaymentDate);
-          date.setMonth(date.getMonth() + (item.month - 1));
-          
-          const day = String(date.getDate()).padStart(2, '0');
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const year = date.getFullYear();
-          
-          paymentDateText = `${day}.${month}.${year}`;
-        } else {
-          paymentDateText = item.month; // Fallback к номеру месяца
+      if (firstPaymentDate) {
+        const date = new Date(firstPaymentDate);
+        // Для авансового платежа (month === 0) используем выбранную дату без смещения
+        if (item.month !== 0) {
+          // Для остальных платежей прибавляем количество месяцев, равное номеру месяца
+          date.setMonth(date.getMonth() + item.month);
         }
+
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+
+        paymentDateText = `${day}.${month}.${year}`;
+        // Добавляем пометку авансового платежа, если это первый платеж и сумма аванса > 0
+        if (item.month === 0 && firstPayment > 0) {
+          paymentDateText += " (Авансовый платеж)";
+        }
+      } else {
+        // Если дата не указана
+        paymentDateText = item.month === 0 ? "Авансовый платеж" : item.month;
       }
       
       return [
@@ -263,7 +273,7 @@ async function downloadFile(tableData, additionalData = {}) {
     if (lastPayment && firstPaymentDate) {
       // Рассчитываем дату выкупа на основе номера месяца и даты первого платежа
       const date = new Date(firstPaymentDate);
-      date.setMonth(date.getMonth() + (lastPayment.month - 1));
+      date.setMonth(date.getMonth() + lastPayment.month);
       
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -290,7 +300,7 @@ async function downloadFile(tableData, additionalData = {}) {
       if (colNumber > 1) cell.numFmt = '#,##0.00';
     });
     // Рассчитываем итоги динамически
-    const totals = paymentRows.reduce((acc, item) => {
+    const totals = paymentRowsTotals.reduce((acc, item) => {
       acc.monthlyPaymentWithNds += item.monthlyPayment?.withNds || 0;
       acc.principalPaymentValue += item.principalPayment?.value || 0;
       acc.principalPaymentNds += item.principalPayment?.nds || 0;
@@ -309,26 +319,30 @@ async function downloadFile(tableData, additionalData = {}) {
       monthlyPaymentNds: 0
     });
 
-    // Добавляем выкупную стоимость к итогам
+    // Сохраняем итоговые суммы без выкупной стоимости
+    const totalsWithoutBuyout = { ...totals };
+
+    // Итоги, включая выкупную стоимость (для справочных блоков ниже)
+    const totalsWithBuyout = { ...totals };
     if (lastPayment) {
-      totals.monthlyPaymentWithNds += lastPayment.monthlyPayment?.withNds || 0;
-      totals.principalPaymentValue += lastPayment.principalPayment?.value || 0;
-      totals.principalPaymentNds += lastPayment.principalPayment?.nds || 0;
-      totals.interestPaymentValue += lastPayment.interestPayment?.value || 0;
-      totals.interestPaymentNds += lastPayment.interestPayment?.nds || 0;
-      totals.monthlyPaymentValue += lastPayment.monthlyPayment?.value || 0;
-      totals.monthlyPaymentNds += lastPayment.monthlyPayment?.nds || 0;
+      totalsWithBuyout.monthlyPaymentWithNds += lastPayment.monthlyPayment?.withNds || 0;
+      totalsWithBuyout.principalPaymentValue += lastPayment.principalPayment?.value || 0;
+      totalsWithBuyout.principalPaymentNds += lastPayment.principalPayment?.nds || 0;
+      totalsWithBuyout.interestPaymentValue += lastPayment.interestPayment?.value || 0;
+      totalsWithBuyout.interestPaymentNds += lastPayment.interestPayment?.nds || 0;
+      totalsWithBuyout.monthlyPaymentValue += lastPayment.monthlyPayment?.value || 0;
+      totalsWithBuyout.monthlyPaymentNds += lastPayment.monthlyPayment?.nds || 0;
     }
 
     const totalRow = worksheet.addRow([
       "Всего:",
-      totals.monthlyPaymentWithNds, // Итог с НДС
-      totals.principalPaymentValue, // Итог возмещения без НДС
-      totals.principalPaymentNds, // Итог НДС на инвестиционные расходы
-      totals.interestPaymentValue, // Итог вознаграждения без НДС
-      totals.interestPaymentNds, // Итог НДС на вознаграждение
-      totals.monthlyPaymentValue, // Итог платежа без НДС
-      totals.monthlyPaymentNds, // Итог НДС
+      totalsWithBuyout.monthlyPaymentWithNds, // Итог с НДС (включая выкупной платеж)
+      totalsWithBuyout.principalPaymentValue, // Итог возмещения без НДС
+      totalsWithBuyout.principalPaymentNds, // Итог НДС на инвестиционные расходы
+      totalsWithBuyout.interestPaymentValue, // Итог вознаграждения без НДС
+      totalsWithBuyout.interestPaymentNds, // Итог НДС на вознаграждение
+      totalsWithBuyout.monthlyPaymentValue, // Итог платежа без НДС
+      totalsWithBuyout.monthlyPaymentNds, // Итог НДС
       0 // Остаток
     ]);
     totalRow.eachCell((cell, colNumber) => {
@@ -389,18 +403,18 @@ buyoutSummaryRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
 worksheet.addRow([]);
 
 // Добавляем строку с автопереносом
-const contractSummaryRow = worksheet.addRow(["3. Стоимость договора лизинга с НДС составляет:", "", "", "", "", "", "", totals.monthlyPaymentWithNds, "USD"]);
+const contractSummaryRow = worksheet.addRow(["3. Стоимость договора лизинга с НДС составляет:", "", "", "", "", "", "", totalsWithBuyout.monthlyPaymentWithNds, "USD"]);
 contractSummaryRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
 
 worksheet.addRow(["в том числе:"]);
 
 // Сумма платежей = общая сумма минус выкупная стоимость
-const paymentsSum = totals.monthlyPaymentWithNds - buyoutAmount;
+const paymentsSum = totalsWithBuyout.monthlyPaymentWithNds;
 const paymentsSummaryRow = worksheet.addRow(["4. Сумма платежей составляет:", "", "", "", "", "", "", paymentsSum, "USD"]);
 paymentsSummaryRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
 
 // НДС на платежи = общий НДС минус НДС выкупной стоимости
-const paymentsNds = totals.monthlyPaymentNds - (lastPayment?.monthlyPayment?.nds || 0);
+const paymentsNds = totalsWithBuyout.monthlyPaymentNds;
 worksheet.addRow(["Сумма НДС на платежи составляет:", "", "", "", "", "", "", paymentsNds, "USD"]);
 
 const buyoutValueSummaryRow = worksheet.addRow(["5. Выкупная стоимость предмета лизинга составляет:", "", "", "", "", "", "", buyoutAmount, "USD"]);
@@ -472,6 +486,14 @@ for (let rowNum = signatureStartRow; rowNum <= signatureEndRow; rowNum++) {
     }
   }
 }
+
+// Нижнее подчёркивание в соседних столбцах для подписи (рядом с «М.П.»)
+const nameRowNum = signatureStartRow + 2; // строка с ФИО
+const underlineCols = [3, 8]; // колонки C и H (рядом с B и G где "М.П.")
+underlineCols.forEach(col => {
+  const cell = worksheet.getRow(nameRowNum).getCell(col);
+  cell.border = { bottom: { style: 'thin' } };
+});
 
 // Общие границы для итоговых сумм
 for (let rowNum = summaryStartRow; rowNum <= signatureStartRow - 1; rowNum++) {
