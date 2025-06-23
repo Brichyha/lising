@@ -242,6 +242,10 @@ async function downloadFile(tableData, additionalData = {}) {
         if (item.month === 0 && firstPayment > 0) {
           paymentDateText += " (Авансовый платеж)";
         }
+        // Помечаем строку выкупной стоимости
+        if (item.balance === 0 && item.month !== 0) {
+          paymentDateText += " (Выкупная стоимость)";
+        }
       } else {
         // Если дата не указана
         paymentDateText = item.month === 0 ? "Авансовый платеж" : item.month;
@@ -284,21 +288,6 @@ async function downloadFile(tableData, additionalData = {}) {
       buyoutDate = lastPayment.paymentDate || lastPayment.month;
     }
     
-    worksheet.addRow(["Выкупная стоимость:"]);
-    const buyoutRow = worksheet.addRow([
-      buyoutDate || "Выкупная дата", // Дата выкупа (динамическая)
-      lastPayment?.monthlyPayment?.withNds || 10750.00, // Платеж с НДС
-      lastPayment?.principalPayment?.value || 8958.33, // Возмещение без НДС
-      lastPayment?.principalPayment?.nds || 1791.67, // НДС на инвестиционные расходы
-      lastPayment?.interestPayment?.value || 0.00, // Вознаграждение без НДС
-      lastPayment?.interestPayment?.nds || 0.00, // НДС на вознаграждение
-      lastPayment?.monthlyPayment?.value || 8958.33, // Платеж без НДС
-      lastPayment?.monthlyPayment?.nds || 1791.67, // Всего НДС
-      0.00 // Остаток
-    ]);
-    buyoutRow.eachCell((cell, colNumber) => {
-      if (colNumber > 1) cell.numFmt = '#,##0.00';
-    });
     // Рассчитываем итоги динамически
     const totals = paymentRowsTotals.reduce((acc, item) => {
       acc.monthlyPaymentWithNds += item.monthlyPayment?.withNds || 0;
@@ -402,25 +391,40 @@ buyoutSummaryRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
 
 worksheet.addRow([]);
 
-// Добавляем строку с автопереносом
-const contractSummaryRow = worksheet.addRow(["3. Стоимость договора лизинга с НДС составляет:", "", "", "", "", "", "", totalsWithBuyout.monthlyPaymentWithNds, "USD"]);
+// Строка 3. Стоимость договора
+const contractSummaryRow = worksheet.addRow(["3. Стоимость договора лизинга с НДС составляет:", "", "", "", "", totalsWithBuyout.monthlyPaymentWithNds, "", "", "USD"]);
 contractSummaryRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
+// Объединяем ячейки A-E и F-H
+worksheet.mergeCells(`A${contractSummaryRow.number}:E${contractSummaryRow.number}`);
+worksheet.mergeCells(`F${contractSummaryRow.number}:H${contractSummaryRow.number}`);
 
-worksheet.addRow(["в том числе:"]);
+const includingRow = worksheet.addRow(["в том числе:"]);
+worksheet.mergeCells(`A${includingRow.number}:I${includingRow.number}`);
+includingRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
 
-// Сумма платежей = общая сумма минус выкупная стоимость
+// Сумма платежей
 const paymentsSum = totalsWithBuyout.monthlyPaymentWithNds;
-const paymentsSummaryRow = worksheet.addRow(["4. Сумма платежей составляет:", "", "", "", "", "", "", paymentsSum, "USD"]);
+const paymentsSummaryRow = worksheet.addRow(["4. Сумма платежей составляет:", "", "", "", "", paymentsSum, "", "", "USD"]);
 paymentsSummaryRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
+worksheet.mergeCells(`A${paymentsSummaryRow.number}:E${paymentsSummaryRow.number}`);
+worksheet.mergeCells(`F${paymentsSummaryRow.number}:H${paymentsSummaryRow.number}`);
 
-// НДС на платежи = общий НДС минус НДС выкупной стоимости
+// НДС на платежи
 const paymentsNds = totalsWithBuyout.monthlyPaymentNds;
-worksheet.addRow(["Сумма НДС на платежи составляет:", "", "", "", "", "", "", paymentsNds, "USD"]);
+const paymentsNdsRow = worksheet.addRow(["Сумма НДС на платежи составляет:", "", "", "", "", paymentsNds, "", "", "USD"]);
+worksheet.mergeCells(`A${paymentsNdsRow.number}:E${paymentsNdsRow.number}`);
+worksheet.mergeCells(`F${paymentsNdsRow.number}:H${paymentsNdsRow.number}`);
 
-const buyoutValueSummaryRow = worksheet.addRow(["5. Выкупная стоимость предмета лизинга составляет:", "", "", "", "", "", "", buyoutAmount, "USD"]);
+// Выкупная стоимость
+const buyoutValueSummaryRow = worksheet.addRow(["5. Выкупная стоимость предмета лизинга составляет:", "", "", "", "", buyoutAmount, "", "", "USD"]);
 buyoutValueSummaryRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
+worksheet.mergeCells(`A${buyoutValueSummaryRow.number}:E${buyoutValueSummaryRow.number}`);
+worksheet.mergeCells(`F${buyoutValueSummaryRow.number}:H${buyoutValueSummaryRow.number}`);
 
-worksheet.addRow(["Сумма НДС на выкупную стоимость предмета лизинга составляет:", "", "", "", "", "", "", lastPayment?.monthlyPayment?.nds || 0, "USD"]);
+// НДС на выкупную стоимость
+const ndsBuyoutRow = worksheet.addRow(["Сумма НДС на выкупную стоимость предмета лизинга составляет:", "", "", "", "", lastPayment?.monthlyPayment?.nds || 0, "", "", "USD"]);
+worksheet.mergeCells(`A${ndsBuyoutRow.number}:E${ndsBuyoutRow.number}`);
+worksheet.mergeCells(`F${ndsBuyoutRow.number}:H${ndsBuyoutRow.number}`);
 worksheet.addRow([]);
 
 // 6. Подписи
@@ -469,22 +473,7 @@ for (let rowNum = signatureStartRow; rowNum <= signatureEndRow; rowNum++) {
     });
   }
   
-  // Границы для блока подписей
-  if (rowNum >= signatureStartRow && rowNum <= signatureEndRow) {
-    for (let col = 1; col <= 9; col++) {
-      const cell = row.getCell(col);
-      
-      // Только нижняя граница для строки с "ЛИЗИНГОДАТЕЛЬ/ЛИЗИНГОПОЛУЧАТЕЛЬ"
-      if (rowNum === signatureStartRow) {
-        cell.border = { bottom: { style: 'thin' } };
-      }
-      
-      // Границы для М.П.
-      if (rowNum === signatureEndRow) {
-        cell.border = { top: { style: 'thin' } };
-      }
-    }
-  }
+
 }
 
 // Нижнее подчёркивание в соседних столбцах для подписи (рядом с «М.П.»)
