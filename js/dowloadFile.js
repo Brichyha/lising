@@ -127,7 +127,7 @@ async function downloadFile(tableData, additionalData = {}) {
       contractCostWithNds = sum || 1075000.0;
       contractCostWithoutNds = contractCostWithNds; // без НДС стоимость равна полной стоимости
       ndsAmount = 0;
-      ndsRate = "0%";
+      ndsRate = "БЕЗ НДС";
     }
     
     worksheet.addRow([
@@ -242,9 +242,9 @@ async function downloadFile(tableData, additionalData = {}) {
         if (item.month === 0 && firstPayment > 0) {
           paymentDateText += " (Авансовый платеж)";
         }
-        // Помечаем строку выкупной стоимости
+        // Помечаем строку выкупного платежа - выводим только текст без даты
         if (item.balance === 0 && item.month !== 0) {
-          paymentDateText += " (Выкупная стоимость)";
+          paymentDateText = "Выкупной платеж";
         }
       } else {
         // Если дата не указана
@@ -386,7 +386,7 @@ const buyoutAmount = lastPayment?.monthlyPayment?.withNds || 0;
 const buyoutDateText = buyoutDate ? `по сроку на ${buyoutDate}` : "";
 
 // Добавляем строку с автопереносом
-const buyoutSummaryRow = worksheet.addRow([`Выкупной платеж с НДС ${buyoutDateText} составляет`, "", "", "", "", "", "", buyoutAmount, "USD"]);
+const buyoutSummaryRow = worksheet.addRow([`Выкупной платеж с НДС составляет`, "", "", "", "", buyoutAmount, "", "", "USD"]);
 buyoutSummaryRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
 
 worksheet.addRow([]);
@@ -397,6 +397,17 @@ contractSummaryRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' }
 // Объединяем ячейки A-E и F-H
 worksheet.mergeCells(`A${contractSummaryRow.number}:E${contractSummaryRow.number}`);
 worksheet.mergeCells(`F${contractSummaryRow.number}:H${contractSummaryRow.number}`);
+
+// Верхняя граница для строки 3 (Стоимость договора)
+for (let col = 1; col <= 9; col++) {
+  const cell = contractSummaryRow.getCell(col);
+  cell.border = {
+    top: { style: 'medium' },
+    left: cell.border?.left || undefined,
+    right: cell.border?.right || undefined,
+    bottom: cell.border?.bottom || undefined,
+  };
+}
 
 const includingRow = worksheet.addRow(["в том числе:"]);
 worksheet.mergeCells(`A${includingRow.number}:I${includingRow.number}`);
