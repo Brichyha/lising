@@ -18,12 +18,17 @@ buttonDownload.addEventListener("click", (e) => {
   const firstPayInput = +document.querySelector("#firstPay-input").value;
   const redemptionPercentInput = +document.querySelector("#redemptionPercent-input").value;
   
+  const individCheckFlag = document.querySelector("#individ-checkbox").checked;
+  const leasingCheckFlag = document.querySelector("#leasing-checkbox").checked;
+  
   const additionalData = {
     firstPaymentDate: firstPaymentDateInput,
     term: termInput,
     sum: sumInput,
     firstPayment: firstPayInput,
-    redemptionPercent: redemptionPercentInput
+    redemptionPercent: redemptionPercentInput,
+    individCheck: individCheckFlag,
+    leasingCheck: leasingCheckFlag,
   };
   
   downloadFile(schedule, additionalData);
@@ -73,6 +78,7 @@ buttonCalcResult.addEventListener("click", (e) => {
         monthlyPaymentValue: scheduleItem.monthlyPayment.value,
         monthlyPaymentNds: scheduleItem.monthlyPayment.nds,
         balance: scheduleItem.balance,
+        showVat: dataLeasing.individCheck || dataLeasing.leasingCheck,
       })
     );
   });
@@ -136,19 +142,27 @@ function createRow({
   monthlyPaymentValue: monthlyPaymentValue,
   monthlyPaymentNds: monthlyPaymentNds,
   balance: balance,
+  showVat: showVat = true,
 }) {
   const tr = document.createElement("tr");
 
   tr.classList.add("table-row");
+
+  // If VAT is not calculated, hide VAT columns by leaving them blank
+  const mpWithNdsDisplay = showVat ? (+monthlyPaymentWithNds).toFixed(2) : "";
+  const ppNdsDisplay = showVat ? (+principalPaymentNds).toFixed(2) : "";
+  const ipNdsDisplay = showVat ? (+interestPaymentNds).toFixed(2) : "";
+  const mpNdsDisplay = showVat ? (+monthlyPaymentNds).toFixed(2) : "";
+
   const row = `
         <td>${month}</td>
-        <td>${(+monthlyPaymentWithNds).toFixed(2)}</td>
+        <td>${mpWithNdsDisplay}</td>
         <td>${(+principalPaymentValue).toFixed(2)}</td>
-        <td>${(+principalPaymentNds).toFixed(2)}</td>
+        <td>${ppNdsDisplay}</td>
         <td>${(+interestPaymentValue).toFixed(2)}</td>
-        <td>${(+interestPaymentNds).toFixed(2)}</td>
+        <td>${ipNdsDisplay}</td>
         <td>${(+monthlyPaymentValue).toFixed(2)}</td>
-        <td>${(+monthlyPaymentNds).toFixed(2)}</td>
+        <td>${mpNdsDisplay}</td>
         <td>${(+balance).toFixed(2)}</td>
     `;
   tr.innerHTML = row;

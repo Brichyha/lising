@@ -1,6 +1,9 @@
 async function downloadFile(tableData, additionalData = {}) {
   try {
-    const { firstPaymentDate, term, sum, firstPayment, redemptionPercent } = additionalData;
+    const { firstPaymentDate, term, sum, firstPayment, redemptionPercent, individCheck, leasingCheck } = additionalData;
+    
+    // Определяем, нужно ли учитывать НДС
+    const vatEnabled = (individCheck || leasingCheck);
     
     // Функция для расчета даты окончания лизинга
     function calculateLeasingPeriod(startDate, termMonths) {
@@ -109,11 +112,23 @@ async function downloadFile(tableData, additionalData = {}) {
     const costHeaderRow = worksheet.addRow(costHeaders);
     costHeaderRow.font = { bold: true };
     worksheet.addRow(["1", "2", "3", "4", "5", "6", "7"]);
-    // Рассчитываем данные динамически
-    const contractCostWithoutNds = sum ? (sum / 1.2) : 895833.33; // Исходя из НДС 20%
-    const ndsAmount = sum ? (sum - contractCostWithoutNds) : 179166.67;
-    const contractCostWithNds = sum || 1075000.00;
-    const ndsRate = "20%"; // НДС ставка
+    // Рассчитываем данные динамически в зависимости от учёта НДС
+    let contractCostWithoutNds;
+    let ndsAmount;
+    let contractCostWithNds;
+    let ndsRate;
+
+    if (vatEnabled) {
+      contractCostWithNds = sum || 1075000.0;
+      contractCostWithoutNds = sum ? (sum / 1.2) : 895833.33; // Исходя из НДС 20%
+      ndsAmount = sum ? (sum - contractCostWithoutNds) : 179166.67;
+      ndsRate = "20%";
+    } else {
+      contractCostWithNds = sum || 1075000.0;
+      contractCostWithoutNds = contractCostWithNds; // без НДС стоимость равна полной стоимости
+      ndsAmount = 0;
+      ndsRate = "0%";
+    }
     
     worksheet.addRow([
       "", // Марка
